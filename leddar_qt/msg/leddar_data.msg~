@@ -1,0 +1,3 @@
+Header header
+Int32  ray_segment
+Float32 distance

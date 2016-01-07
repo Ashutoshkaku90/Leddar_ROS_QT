@@ -1,0 +1,108 @@
+/*
+ * Copyright (c) 2015, Kostas Alexis, AERIAL, UNR, NV, USA
+ * You can contact the author at <konstantinos.alexis@gmail.com>
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * created on Sep 30, 2015 5:00:11 AM
+ */
+
+
+#include "../include/leddar_qt/qnode.hpp"
+#include <stdio.h>
+
+
+#define ARRAY_LEN( a )  (sizeof(a)/sizeof(a[0]))
+ LeddarHandle gHandle=NULL;
+
+void scan();
+char ch;
+class Thread : public QThread
+{
+private:
+    void run()
+    {
+        while(1)
+          { 
+            std::cout<<"enter vvalur";
+            std::cin>>ch;
+            std::cout<<"\nprintout=%c\n"<<ch;
+           }
+      }
+};
+int main(int argc, char **argv)
+  {
+          
+	ros::init(argc, argv, "leddar_p");
+   
+  ros::NodeHandle n;
+  Thread t;
+  std_msgs::Int32 ray_segment;
+  std_msgs::Float32 obj_distance;
+  
+ leddar_qt::leddar_data ld;
+
+  std::cout << "-------------------------------------------------"  << std::endl;
+  std::cout << "               leddar ros initialized            "  << std::endl;
+  std::cout << "-------------------------------------------------"  << std::endl;
+
+	gHandle = LeddarCreate();
+    std::cout<<"\nfine"; 
+  char lAddress[24];
+  lAddress[0] = 0;
+  int cnt = 1;
+ 
+	 ros::Publisher led_data=n.advertise<leddar_qt::leddar_data>("leddar_data",1000);
+         
+         ros::Rate loop_rate(2);
+
+	if ( LeddarConnect( gHandle, lAddress ) == LD_SUCCESS || 1) 
+         {
+           if (LeddarStartDataTransfer( gHandle, LDDL_DETECTIONS ) == LD_SUCCESS || 1)
+            { 
+              // t.start();
+
+               while ((ros::ok() && LeddarGetConnected( gHandle ))|| 1 ) 
+	     {
+               printf("\noutput=%c\n",ch);
+               LdDetection leddarDetections[50];
+               unsigned int leddarCount = LeddarGetDetectionCount( gHandle );
+        
+	       if ( leddarCount > ARRAY_LEN( leddarDetections ) )
+                {
+                 leddarCount = ARRAY_LEN( leddarDetections );
+                }
+                 LeddarGetDetections( gHandle, leddarDetections, ARRAY_LEN( leddarDetections ) );
+          
+                 int i, j;
+                 for( i=0, j=0; (i<leddarCount) && (j<16); ++i )
+                  {
+               
+                   ld.ray_segment=leddarDetections[i].mSegment;
+                   ld.distance=leddarDetections[i].mDistance;
+              
+                   printf( "%d---->%5.2f \n", ld.ray_segment,ld.distance);
+                   led_data.publish(ld);
+                   ++j;
+                  }
+        
+                  cnt++; 
+				
+	       ros::spinOnce();
+	       loop_rate.sleep();
+	 }
+      }
+    }
+  LeddarDestroy( gHandle );
+  return 0;
+  }
